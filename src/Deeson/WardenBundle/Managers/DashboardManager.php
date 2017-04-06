@@ -5,6 +5,7 @@ namespace Deeson\WardenBundle\Managers;
 use Deeson\WardenBundle\Document\DashboardDocument;
 use Deeson\WardenBundle\Document\SiteDocument;
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
+use Deeson\WardenBundle\Event\SiteRefreshEvent;
 
 class DashboardManager extends BaseManager {
 
@@ -38,20 +39,24 @@ class DashboardManager extends BaseManager {
   public function onWardenDashboardUpdate(DashboardUpdateEvent $event) {
     /** @var SiteDocument $site */
     $site = $event->getSite();
-
-    $qb = $this->createQueryBuilder();
-    $qb->field('siteId')->equals(new \MongoId($site->getId()));
-    $cursor = $qb->getQuery()->execute()->toArray();
-    $dashboardSite = array_pop($cursor);
-    if (!empty($dashboardSite)) {
-      $this->logger->addInfo('Remove the site [' . $site->getName() . '] from the dashboard');
-      $this->deleteDocument($dashboardSite->getId());
-    }
+    $this->removeSiteFromDashboard($site);
 
     if ($event->isForceDelete()) {
       return;
     }
 
+    $this->addSiteToDashboard($site);
+  }
+
+  /**
+   * Event wardem.site.refresh
+   *
+   * @param SiteRefreshEvent $event
+   */
+  public function onWardenSiteRefresh(SiteRefreshEvent $event) {
+    /** @var SiteDocument $site */
+    $site = $event->getSite();
+    $this->removeSiteFromDashboard($site);
     $this->addSiteToDashboard($site);
   }
 
@@ -102,6 +107,22 @@ class DashboardManager extends BaseManager {
     $this->saveDocument($dashboard);
 
     return true;
+  }
+
+  /**
+   * Removes the site from the dashboard.
+   *
+   * @param SiteDocument $site
+   */
+  protected function removeSiteFromDashboard(SiteDocument $site) {
+    $qb = $this->createQueryBuilder();
+    $qb->field('siteId')->equals(new \MongoId($site->getId()));
+    $cursor = $qb->getQuery()->execute()->toArray();
+    $dashboardSite = array_pop($cursor);
+    if (!empty($dashboardSite)) {
+      $this->logger->addInfo('Remove the site [' . $site->getName() . '] from the dashboard');
+      $this->deleteDocument($dashboardSite->getId());
+    }
   }
 
 }

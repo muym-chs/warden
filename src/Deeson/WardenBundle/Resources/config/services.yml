@@ -41,6 +41,7 @@ services:
             - { name: kernel.event_listener, event: warden.site.update, method: onWardenSiteUpdate  }
             - { name: kernel.event_listener, event: warden.site.refresh, method: onRefreshSiteRequest  }
             - { name: kernel.event_listener, event: warden.site.show, method: onWardenSiteShow  }
+            - { name: kernel.event_listener, event: warden.site.delete, method: onWardenSiteDelete  }
 
     warden.site_manager:
         class: Deeson\WardenBundle\Managers\SiteManager
@@ -57,6 +58,7 @@ services:
         arguments: [@doctrine_mongodb, @monolog.logger]
         tags:
             - { name: kernel.event_listener, event: warden.dashboard.update, method: onWardenDashboardUpdate  }
+            - { name: kernel.event_listener, event: warden.site.refresh, method: onWardenSiteRefresh, priority: 100  }
 
     user_provider:
         class: Deeson\WardenBundle\Services\UserProviderService

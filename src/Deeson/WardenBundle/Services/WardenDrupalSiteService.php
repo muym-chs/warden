@@ -3,12 +3,14 @@
 namespace Deeson\WardenBundle\Services;
 
 use Deeson\WardenBundle\Document\SiteDocument;
+use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
-use Deeson\WardenBundle\Event\SiteEvent;
+use Deeson\WardenBundle\Event\SiteRefreshEvent;
 use Deeson\WardenBundle\Event\SiteShowEvent;
 use Deeson\WardenBundle\Event\SiteUpdateEvent;
 use Deeson\WardenBundle\Event\WardenEvents;
 use Deeson\WardenBundle\Exception\DocumentNotFoundException;
+use Deeson\WardenBundle\Exception\WardenRequestException;
 use Deeson\WardenBundle\Managers\ModuleManager;
 use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -104,19 +106,24 @@ class WardenDrupalSiteService {
    *
    * Fires when the Warden administrator requests for a site to be refreshed.
    *
-   * @param SiteEvent $event
+   * @param SiteRefreshEvent $event
    *   Event detailing the site requesting a refresh.
    */
-  public function onRefreshSiteRequest(SiteEvent $event) {
+  public function onRefreshSiteRequest(SiteRefreshEvent $event) {
     $site = $event->getSite();
     if (!$this->isDrupalSite($site)) {
       return;
     }
 
-    $this->logger->addInfo('This is the start of a Drupal Site Refresh Event: ' . $site->getUrl());
-    $this->siteConnectionService->post($this->getSiteRequestUrl($site), $site);
-    $event->addMessage('A Drupal site has been updated: ' . $site->getUrl());
-    $this->logger->addInfo('This is the end of a Drupal Site Refresh Event: ' . $site->getUrl());
+    try {
+      $this->logger->addInfo('This is the start of a Drupal Site Refresh Event: ' . $site->getUrl());
+      $this->siteConnectionService->post($this->getSiteRequestUrl($site), $site);
+      $event->addMessage('A Drupal site has been updated: ' . $site->getUrl());
+      $this->logger->addInfo('This is the end of a Drupal Site Refresh Event: ' . $site->getUrl());
+    }
+    catch (WardenRequestException $e) {
+      $event->addMessage($e->getMessage(), SiteRefreshEvent::WARNING);
+    }
   }
 
   /**
@@ -176,6 +183,24 @@ class WardenDrupalSiteService {
     }
 
     $this->logger->addInfo('This is the end of a Drupal show site event: ' . $site->getUrl());
+  }
+
+  /**
+   * Update the modules to remove the site.
+   *
+   * @param SiteDocument $site
+   */
+  public function onWardenSiteDelete(SiteDocument $site) {
+    foreach ($site->getModules() as $siteModule) {
+      /** @var ModuleDocument $module */
+      $module = $this->drupalModuleManager->findByProjectName($siteModule['name']);
+      if (empty($module)) {
+        $this->logger->addError('Error getting module [' . $siteModule['name'] . ']');
+        continue;
+      }
+      $module->removeSite($site->getId());
+      $this->drupalModuleManager->updateDocument();
+    }
   }
 
   /**

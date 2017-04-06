@@ -2,13 +2,12 @@
 
 namespace Deeson\WardenBundle\Controller;
 
-use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
-use Deeson\WardenBundle\Event\SiteEvent;
+use Deeson\WardenBundle\Event\SiteDeleteEvent;
+use Deeson\WardenBundle\Event\SiteRefreshEvent;
 use Deeson\WardenBundle\Event\SiteShowEvent;
 use Deeson\WardenBundle\Event\SiteUpdateEvent;
 use Deeson\WardenBundle\Event\WardenEvents;
-use Deeson\WardenBundle\Managers\ModuleManager;
 use Symfony\Bridge\Monolog\Logger;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -125,10 +124,12 @@ class SitesController extends Controller {
 
     if ($form->isValid()) {
       $manager->deleteDocument($id);
-      $this->updateModules($site);
 
       /** @var EventDispatcher $dispatcher */
       $dispatcher = $this->get('event_dispatcher');
+      $event = new SiteDeleteEvent($site);
+      $dispatcher->dispatch(WardenEvents::WARDEN_SITE_DELETE, $event);
+
       $event = new DashboardUpdateEvent($site, TRUE);
       $dispatcher->dispatch(WardenEvents::WARDEN_DASHBOARD_UPDATE, $event);
 
@@ -172,18 +173,15 @@ class SitesController extends Controller {
     /** @var EventDispatcher $dispatcher */
     $dispatcher = $this->get('event_dispatcher');
 
-    $event = new SiteEvent($site);
+    $event = new SiteRefreshEvent($site);
+    $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
 
-    try {
-      $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
-    }
-    catch (\Exception $e) {
-      $this->get('session')->getFlashBag()->add('error', 'General Error - Unable to retrieve data from the site: ' . $e->getMessage());
-      return $this->redirect($this->generateUrl('sites_show', array('id' => $id)));
+    if ($event->hasMessage(SiteRefreshEvent::WARNING)) {
+      $this->get('session')->getFlashBag()->add('error', 'General Error - Unable to retrieve data from the site: ' . $event->getMessage(SiteRefreshEvent::WARNING));
     }
 
-    if ($event->hasMessage()) {
-      $this->get('session')->getFlashBag()->add('notice', $event->getMessage());
+    if ($event->hasMessage(SiteRefreshEvent::NOTICE)) {
+      $this->get('session')->getFlashBag()->add('notice', $event->getMessage(SiteRefreshEvent::NOTICE));
     }
 
     return $this->redirect($this->generateUrl('sites_show', array('id' => $id)));
@@ -248,27 +246,6 @@ class SitesController extends Controller {
     } catch (\Exception $e) {
       $logger->addError($e->getMessage());
       return new Response('Bad Request', 400, array('Content-Type: text/plain'));
-    }
-  }
-
-  /**
-   * Update the modules to remove the site.
-   *
-   * @param \Deeson\WardenBundle\Document\SiteDocument $site
-   */
-  protected function updateModules(SiteDocument $site) {
-    /** @var ModuleManager $moduleManager */
-    $moduleManager = $this->get('warden.drupal.module');
-
-    foreach ($site->getModules() as $siteModule) {
-      /** @var ModuleDocument $module */
-      $module = $moduleManager->findByProjectName($siteModule['name']);
-      if (empty($module)) {
-        print('Error getting module [' . $siteModule['name'] . ']');
-        continue;
-      }
-      $module->removeSite($site->getId());
-      $moduleManager->updateDocument();
     }
   }
 

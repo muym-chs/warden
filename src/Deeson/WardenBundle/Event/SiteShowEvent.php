@@ -7,8 +7,6 @@
 
 namespace Deeson\WardenBundle\Event;
 
-use Symfony\Component\EventDispatcher\Event;
-
 class SiteShowEvent extends SiteEvent {
 
   /**
