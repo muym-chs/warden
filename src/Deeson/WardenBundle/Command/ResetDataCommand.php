@@ -33,6 +33,7 @@ class ResetDataCommand extends ContainerAwareCommand {
       $siteManager->updateDocument();
     }
 
+    // @todo trigger WARDEN_RESET_DATA event.
     $moduleManager->deleteAll();
 
     $output->writeln('Cleared out all data.');
