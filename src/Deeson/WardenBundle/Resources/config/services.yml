@@ -5,25 +5,19 @@ services:
         tags:
             - { name: kernel.event_listener, event: kernel.exception, method: onKernelException }
 
-    # cURL client for Buzz
-    buzz.client.file_get_contents:
-        class:  Buzz\Client\FileGetContents
-        public: false
-        calls:
-          - [setVerifyPeer, [false]]
-    buzz.client.curl:
-        class:  Buzz\Client\Curl
-        public: false
-        calls:
-          - [setVerifyPeer, [false]]
+    user_provider:
+        class: Deeson\WardenBundle\Services\UserProviderService
+        arguments: [%kernel.root_dir%]
 
-    # Buzz browser
-    buzz.browser:
-        class:     Buzz\Browser
-        arguments: ['@buzz.client.curl']
+    warden_setup:
+        class: Deeson\WardenBundle\Services\WardenSetupService
+        arguments: [%kernel.root_dir%]
+
+    warden.http_client:
+        class: Deeson\WardenBundle\Client\BuzzRequestHandler
 
     warden.mail_manager:
-        class:     Deeson\WardenBundle\Services\MailService
+        class: Deeson\WardenBundle\Services\MailService
         arguments: ['@mailer', '@twig']
 
     warden.ssl_encryption:
@@ -32,42 +26,42 @@ services:
 
     warden.site_connection:
         class: Deeson\WardenBundle\Services\SiteConnectionService
-        arguments: ['@buzz.browser', '@warden.site_manager', '@warden.ssl_encryption', '@monolog.logger']
+        arguments: ['@warden.http_client', '@warden.ssl_encryption', '@monolog.logger']
 
-    warden.drupal.module:
+    warden.drupal.module_manager:
         class: Deeson\WardenBundle\Managers\ModuleManager
         arguments: ['@doctrine_mongodb', '@monolog.logger']
-
-    warden.drupal.site:
-        class: Deeson\WardenBundle\Services\WardenDrupalSiteService
-        arguments: ['@warden.drupal.module', '@warden.site_connection', '@monolog.logger', '@event_dispatcher']
-        tags:
-            - { name: kernel.event_listener, event: warden.site.update, method: onWardenSiteUpdate }
-            - { name: kernel.event_listener, event: warden.site.refresh, method: onRefreshSiteRequest }
-            - { name: kernel.event_listener, event: warden.site.show, method: onWardenSiteShow }
-            - { name: kernel.event_listener, event: warden.site.delete, method: onWardenSiteDelete  }
 
     warden.site_manager:
         class: Deeson\WardenBundle\Managers\SiteManager
         arguments: ['@doctrine_mongodb', '@monolog.logger']
 
+    warden.drupal.site:
+        class: Deeson\WardenBundle\Services\DrupalSiteService
+        arguments: ['@warden.drupal.module_manager', '@warden.site_connection', '@monolog.logger', '@event_dispatcher']
+        tags:
+            - { name: kernel.event_listener, event: warden.site.update, method: onWardenSiteUpdate }
+            - { name: kernel.event_listener, event: warden.site.refresh, method: onWardenSiteRefresh }
+            - { name: kernel.event_listener, event: warden.site.show, method: onWardenSiteShow }
+            - { name: kernel.event_listener, event: warden.site.delete, method: onWardenSiteDelete  }
+            - { name: kernel.event_listener, event: warden.cron, method: onWardenCron, priority: 100 }
+
+    warden.drupal.module_service:
+        class: Deeson\WardenBundle\Services\DrupalModuleService
+        arguments: ['@warden.drupal.module_manager', '@warden.site_manager', '@monolog.logger']
+        tags:
+            - { name: kernel.event_listener, event: warden.cron, method: onWardenCron, priority: 30 }
+
     warden.drupal.module_version:
         class: Deeson\WardenBundle\Services\DrupalUpdateRequestService
-        arguments: ['@buzz.browser', '@warden.site_manager', '@warden.drupal.module', '@monolog.logger']
+        arguments: ['@warden.http_client', '@warden.site_manager', '@warden.drupal.module_manager', '@monolog.logger']
         tags:
-            - { name: kernel.event_listener, event: warden.cron, method: onWardenCron }
+            - { name: kernel.event_listener, event: warden.cron, method: onWardenCron, priority: 60 }
 
     warden.dashboard_manager:
         class: Deeson\WardenBundle\Managers\DashboardManager
-        arguments: ['@doctrine_mongodb', '@monolog.logger', '@warden.mail_manager', '@service_container']
+        arguments: ['@doctrine_mongodb', '@monolog.logger', '@warden.site_manager', '@warden.mail_manager', '@service_container']
         tags:
             - { name: kernel.event_listener, event: warden.dashboard.update, method: onWardenDashboardUpdate }
-            - { name: kernel.event_listener, event: warden.site.refresh, method: onWardenSiteRefresh, priority: 100  }
-
-    user_provider:
-        class: Deeson\WardenBundle\Services\UserProviderService
-        arguments: [%kernel.root_dir%]
-
-    warden_setup:
-        class: Deeson\WardenBundle\Services\WardenSetupService
-        arguments: [%kernel.root_dir%]
+            - { name: kernel.event_listener, event: warden.cron, method: onWardenCron, priority: -100 }
+            - { name: kernel.event_listener, event: warden.site.refresh, method: onWardenSiteRefresh, priority: 100 }

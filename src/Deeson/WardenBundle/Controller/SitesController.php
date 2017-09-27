@@ -59,6 +59,7 @@ class SitesController extends Controller {
     $params = array(
       'site' => $site,
       'templates' => $event->getTemplates(),
+      'tabTemplates' => $event->getTabTemplates(),
     );
 
     foreach ($event->getParams() as $key => $value) {
@@ -173,10 +174,10 @@ class SitesController extends Controller {
     /** @var EventDispatcher $dispatcher */
     $dispatcher = $this->get('event_dispatcher');
 
-    $event = new SiteRefreshEvent($site);
-    $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
+    try {$event = new SiteRefreshEvent($site);
 
-    if ($event->hasMessage(SiteRefreshEvent::WARNING)) {
+
+      $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);if ($event->hasMessage(SiteRefreshEvent::WARNING)) {
       $this->get('session')->getFlashBag()->add('error', 'General Error - Unable to retrieve data from the site: ' . $event->getMessage(SiteRefreshEvent::WARNING));
     }
 
@@ -239,6 +240,7 @@ class SitesController extends Controller {
       $event = new SiteUpdateEvent($site, $wardenDataObject);
       $dispatcher->dispatch(WardenEvents::WARDEN_SITE_UPDATE, $event);
 
+      $site->setLastSuccessfulRequest();
       $siteManager->updateDocument();
 
       return new Response('OK', 200, array('Content-Type: text/plain'));
@@ -246,6 +248,27 @@ class SitesController extends Controller {
     } catch (\Exception $e) {
       $logger->addError($e->getMessage());
       return new Response('Bad Request', 400, array('Content-Type: text/plain'));
+    }
+  }
+
+  /**
+   * Update the modules to remove the site.
+   *
+   * @param \Deeson\WardenBundle\Document\SiteDocument $site
+   */
+  protected function updateModules(SiteDocument $site) {
+    /** @var ModuleManager $moduleManager */
+    $moduleManager = $this->get('warden.drupal.module_manager');
+
+    foreach ($site->getModules() as $siteModule) {
+      /** @var ModuleDocument $module */
+      $module = $moduleManager->findByProjectName($siteModule['name']);
+      if (empty($module)) {
+        print('Error getting module [' . $siteModule['name'] . ']');
+        continue;
+      }
+      $module->removeSite($site->getId());
+      $moduleManager->updateDocument();
     }
   }
 

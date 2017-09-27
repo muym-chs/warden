@@ -3,19 +3,19 @@
 namespace Deeson\WardenBundle\Services;
 
 use Deeson\WardenBundle\Document\SiteDocument;
+use Deeson\WardenBundle\Event\CronEvent;
 use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
 use Deeson\WardenBundle\Event\SiteRefreshEvent;
 use Deeson\WardenBundle\Event\SiteShowEvent;
 use Deeson\WardenBundle\Event\SiteUpdateEvent;
 use Deeson\WardenBundle\Event\WardenEvents;
-use Deeson\WardenBundle\Exception\DocumentNotFoundException;
 use Deeson\WardenBundle\Exception\WardenRequestException;
 use Deeson\WardenBundle\Managers\ModuleManager;
 use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-class WardenDrupalSiteService {
+class DrupalSiteService {
 
   /**
    * @var ModuleManager
@@ -86,24 +86,36 @@ class WardenDrupalSiteService {
     if (!is_array($moduleData)) {
       $moduleData = array();
     }
-    $jsLibraryData = json_decode(json_encode($data->js_library), TRUE);
-    if (!is_array($jsLibraryData)) {
-      $jsLibraryData = array();
-    }
     $this->drupalModuleManager->addModules($moduleData);
     $site->setName($data->site_name);
     $site->setCoreVersion($data->core->drupal->version);
     $site->setModules($moduleData, TRUE);
-    $site->setJsLibraries($jsLibraryData, TRUE);
 
-    try {
-      $site->updateModules($this->drupalModuleManager);
+    $event = new DashboardUpdateEvent($site);
+    $this->dispatcher->dispatch(WardenEvents::WARDEN_DASHBOARD_UPDATE, $event);
+  }
 
-      $event = new DashboardUpdateEvent($site);
-      $this->dispatcher->dispatch(WardenEvents::WARDEN_DASHBOARD_UPDATE, $event);
-    }
-    catch (DocumentNotFoundException $e) {
-      $this->logger->addWarning($e->getMessage());
+  /**
+   * Event: warden.cron
+   *
+   * Updates all the sites with their latest data into Warden.
+   *
+   * @param CronEvent $event
+   */
+  public function onWardenCron(CronEvent $event) {
+    $sites = $event->getSites();
+    foreach ($sites as $site) {
+      /** @var SiteDocument $site */
+      print 'Updating site: ' . $site->getId() . ' - ' . $site->getUrl() . "\n";
+      $this->logger->addInfo('Updating site: ' . $site->getId() . ' - ' . $site->getUrl());
+      try {
+        $event = new SiteEvent($site);
+        $this->dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
+      }
+      catch (\Exception $e) {
+        print 'General Error - Unable to retrieve data from the site: ' . $e->getMessage() . "\n";
+        $this->logger->addError('General Error - Unable to retrieve data from the site: ' . $e->getMessage());
+      }
     }
   }
 
@@ -115,7 +127,7 @@ class WardenDrupalSiteService {
    * @param SiteRefreshEvent $event
    *   Event detailing the site requesting a refresh.
    */
-  public function onRefreshSiteRequest(SiteRefreshEvent $event) {
+  public function onWardenSiteRefresh(SiteRefreshEvent $event) {
     $site = $event->getSite();
     if (!$this->isDrupalSite($site)) {
       return;
@@ -173,20 +185,13 @@ class WardenDrupalSiteService {
     // Check if there are any Drupal modules that require updates.
     $modulesRequiringUpdates = $site->getModulesRequiringUpdates();
     if (!empty($modulesRequiringUpdates)) {
-      $event->addTemplate('DeesonWardenBundle:Drupal:moduleUpdates.html.twig');
+      $event->addTabTemplate('modules', 'DeesonWardenBundle:Drupal:moduleUpdates.html.twig');
       $event->addParam('modulesRequiringUpdates', $modulesRequiringUpdates);
     }
 
     // List the Drupal modules that used on the site.
-    $event->addTemplate('DeesonWardenBundle:Drupal:modules.html.twig');
+    $event->addTabTemplate('modules', 'DeesonWardenBundle:Drupal:modules.html.twig');
     $event->addParam('modules', $site->getModules());
-
-    // List the Javascript libraries that are used on the site.
-    $jsLibraries = $site->getJsLibraries();
-    if (!empty($jsLibraries)) {
-      $event->addTemplate('DeesonWardenBundle:Drupal:javascript.html.twig');
-      $event->addParam('jsLibraries', $jsLibraries);
-    }
 
     $this->logger->addInfo('This is the end of a Drupal show site event: ' . $site->getUrl());
   }

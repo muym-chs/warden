@@ -49,9 +49,9 @@ class SiteDocument extends BaseDocument {
   protected $modules;
 
   /**
-   * @Mongodb\Collection
+   * @Mongodb\Hash
    */
-  protected $jsLibraries;
+  protected $libraries;
 
   /**
    * @Mongodb\Field(type="string")
@@ -135,16 +135,6 @@ class SiteDocument extends BaseDocument {
   }
 
   /**
-   * @return boolean
-   */
-  public function hasCriticalIssues() {
-    if ($this->getIsSecurityCoreVersion()) {
-      return $this->getCoreVersion() != $this->getLatestCoreVersion();
-    }
-    return FALSE;
-  }
-
-  /**
    * @return mixed
    */
   public function getCoreVersion() {
@@ -203,8 +193,8 @@ class SiteDocument extends BaseDocument {
 
   /**
    * Get the site modules.
-   *
    * @todo move this into the DrupalSiteService
+   *
    * @return mixed
    */
   public function getModules() {
@@ -258,46 +248,40 @@ class SiteDocument extends BaseDocument {
   }
 
   /**
-   * Get the site JS libraries.
-   *
+   * Get the site third party libraries.
    * @todo move this into the DrupalSiteService
+   *
    * @return mixed
    */
-  public function getJsLibraries() {
-    return (!empty($this->jsLibraries)) ? $this->jsLibraries : array();
+  public function getLibraries() {
+    return (!empty($this->libraries)) ? $this->libraries : array();
   }
 
   /**
-   * Set the current Javascript libraries for the site.
+   * Set the current third party libraries for the site.
+   * @todo move this into the DrupalSiteService
    *
-   * @param array $jsLibraryData
-   *   List of Javascript library data to add to the site.
-   * @param bool $update
-   *   If true, update the site Javascript library versions while using the existing version
-   *   information.
+   * @param array $libraryData
+   *   List of third party library data to add to the site.
    */
-  public function setJsLibraries($jsLibraryData, $update = FALSE) {
-    $curentJsLibrary = ($update) ? $this->getJsLibraries() : array();
-    if (!empty($curentJsLibrary)) {
-      $currentVersions = array();
-      foreach ($curentJsLibrary as $value) {
-        $currentVersions[$value['name']] = $value;
+  public function setLibraries($libraryData) {
+    $libraryList = array();
+    foreach ($libraryData as $type => $typeData) {
+      foreach ($typeData as $name => $version) {
+        $libraryList[$type][] = array(
+          'name' => $name,
+          'version' => $version,
+        );
       }
+      ksort($libraryList[$type]);
     }
-
-    $jsLibraryList = array();
-    foreach ($jsLibraryData as $name => $version) {
-      $jsLibraryList[$name] = array(
-        'name' => $name,
-        'version' => $version['version'],
-      );
-    }
-    ksort($jsLibraryList);
-    $this->jsLibraries = $jsLibraryList;
+    ksort($libraryList);
+    $this->libraries = $libraryList;
   }
 
   /**
    * Gets a modules latest version for the site.
+   * @todo move this into the DrupalSiteService
    *
    * @param $module
    *
@@ -309,19 +293,34 @@ class SiteDocument extends BaseDocument {
 
   /**
    * Returns if the provided module has a security release.
+   * @todo move this into the DrupalSiteService
    *
-   * @param $module
+   * @param array $module
    *
    * @return boolean
    */
   public function getModuleIsSecurity($module) {
+    if ($this->getModuleIsDevRelease($module)) {
+      return FALSE;
+    }
     return (!isset($module['isSecurity'])) ? FALSE : $module['isSecurity'];
   }
 
   /**
-   * Sets the latest versions of each of the modules for the site.
+   * Determines if the module version is a dev release or not.
    *
+   * @param array $module
+   *
+   * @return bool
+   */
+  public function getModuleIsDevRelease($module) {
+    return ModuleDocument::isDevRelease($module['version']);
+  }
+
+  /**
+   * Sets the latest versions of each of the modules for the site.
    * @todo move this into the DrupalSiteService
+   *
    * @param $moduleLatestVersions
    */
   public function setModulesLatestVersion($moduleLatestVersions) {
@@ -355,7 +354,8 @@ class SiteDocument extends BaseDocument {
   }
 
   /**
-   * Updates a specific module on a site with version and/or security info,
+   * Updates a specific module on a site with version and/or security info.
+   * @todo move this into the DrupalSiteService
    *
    * @param string $moduleName
    *   The module project name.
@@ -383,6 +383,7 @@ class SiteDocument extends BaseDocument {
    * Updates the modules list for the provided site.
    *
    * This updates the list of modules that this site has with the module documents.
+   * @todo move this into the DrupalSiteService
    *
    * @param ModuleManager $moduleManager
    *
@@ -393,7 +394,7 @@ class SiteDocument extends BaseDocument {
       /** @var ModuleDocument $module */
       $module = $moduleManager->findByProjectName($siteModule['name']);
       if (empty($module)) {
-        throw new DocumentNotFoundException('Error getting module [' . $siteModule['name'] . ']');
+        print "Error getting module [{$siteModule['name']}]\n";
         continue;
       }
       $moduleSites = $module->getSites();
@@ -413,7 +414,7 @@ class SiteDocument extends BaseDocument {
         $module->updateSite($this->getId(), $siteModule['version']);
       }
       else {
-        $module->addSite($this->getId(), $this->getUrl(), $siteModule['version']);
+        $module->addSite($this->getId(), $this->getName(), $this->getUrl(), $siteModule['version']);
       }
       $moduleManager->updateDocument();
     }
@@ -436,17 +437,20 @@ class SiteDocument extends BaseDocument {
   /**
    * Get a list of site modules that require updating.
    * @todo move this into the DrupalSiteService
+   *
    * @return array
    */
   public function getModulesRequiringUpdates() {
     $siteModuleList = $this->getModules();
     $modulesList = array();
     foreach ($siteModuleList as $module) {
-      if (isset($module['latestVersion']) && $module['latestVersion'] == $module['version']) {
+      if (!isset($module['latestVersion'])) {
         continue;
       }
-
       if (is_null($module['version'])) {
+        continue;
+      }
+      if (ModuleDocument::isLatestVersion($module)) {
         continue;
       }
 

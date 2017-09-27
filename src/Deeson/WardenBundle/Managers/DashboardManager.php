@@ -3,6 +3,7 @@
 namespace Deeson\WardenBundle\Managers;
 
 use Deeson\WardenBundle\Document\DashboardDocument;
+use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Document\SiteDocument;
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
 use Deeson\WardenBundle\Event\SiteRefreshEvent;
@@ -18,13 +19,19 @@ class DashboardManager extends BaseManager {
   protected $mailer;
 
   /**
+   * @var SiteManager
+   */
+  protected $siteManager;
+
+  /**
    * @var ContainerInterface
    */
   protected $container;
 
-  public function __construct($doctrine, Logger $logger, MailService $mailer, ContainerInterface $container) {
+  public function __construct($doctrine, Logger $logger, SiteManager $siteManager, MailService $mailer, ContainerInterface $container) {
     parent::__construct($doctrine, $logger);
     $this->mailer = $mailer;
+    $this->siteManager = $siteManager;
     $this->container = $container;
   }
 
@@ -47,6 +54,27 @@ class DashboardManager extends BaseManager {
   }
 
   /**
+   * Event: warden.cron
+   *
+   * Fires on a cron event to update the dashboard
+   */
+  public function onWardenCron() {
+    // Remove all 'have_issue' documents.
+    $this->deleteAll();
+
+    // Rebuild the dashboard based upon active sites.
+    $sites = $this->siteManager->getDocumentsBy(array('isNew' => FALSE));
+    foreach ($sites as $site) {
+      /** @var SiteDocument $site */
+      print('Checking site: ' . $site->getId() . ' - ' . $site->getUrl() . "\n");
+
+      if ($this->updateDashboard($site)) {
+        print('Adding site to dashboard: ' . $site->getId() . ' - ' . $site->getUrl() . "\n");
+      }
+    }
+  }
+
+  /**
    * Event: warden.dashboard.update
    *
    * Fires when the dashboard might need to be updated.
@@ -56,15 +84,7 @@ class DashboardManager extends BaseManager {
    * @param DashboardUpdateEvent $event
    */
   public function onWardenDashboardUpdate(DashboardUpdateEvent $event) {
-    /** @var SiteDocument $site */
-    $site = $event->getSite();
-    $this->removeSiteFromDashboard($site);
-
-    if ($event->isForceDelete()) {
-      return;
-    }
-
-    $this->addSiteToDashboard($site);
+    $this->updateDashboard($event->getSite(), $event->isForceDelete());
   }
 
   /**
@@ -73,10 +93,32 @@ class DashboardManager extends BaseManager {
    * @param SiteRefreshEvent $event
    */
   public function onWardenSiteRefresh(SiteRefreshEvent $event) {
-    /** @var SiteDocument $site */
-    $site = $event->getSite();
-    $this->removeSiteFromDashboard($site);
-    $this->addSiteToDashboard($site);
+    $this->updateDashboard($event->getSite());
+  }
+
+  /**
+   * Updates the dashboard for the relevant site.
+   *
+   * @param SiteDocument $site
+   * @param bool $forceDelete
+   *
+   * @return bool
+   */
+  protected function updateDashboard(SiteDocument $site, $forceDelete = FALSE) {
+    $qb = $this->createQueryBuilder();
+    $qb->field('siteId')->equals(new \MongoId($site->getId()));
+    $cursor = $qb->getQuery()->execute()->toArray();
+    $dashboardSite = array_pop($cursor);
+    if (!empty($dashboardSite)) {
+      $this->logger->addInfo('Remove the site [' . $site->getName() . '] from the dashboard');
+      $this->deleteDocument($dashboardSite->getId());
+    }
+
+    if ($forceDelete) {
+      return FALSE;
+    }
+
+    return $this->addSiteToDashboard($site);
   }
 
   /**
@@ -88,16 +130,16 @@ class DashboardManager extends BaseManager {
    *   True if the site has been added otherwise false.
    */
   public function addSiteToDashboard(SiteDocument $site) {
-    $hasCriticalIssue = $site->hasCriticalIssues();
+    $hasCriticalIssue = $site->getHasCriticalIssue();
     $modulesNeedUpdate = array();
     foreach ($site->getModules() as $siteModule) {
       if (!isset($siteModule['latestVersion'])) {
         continue;
       }
-      if ($siteModule['version'] == $siteModule['latestVersion']) {
+      if (is_null($siteModule['version'])) {
         continue;
       }
-      if (is_null($siteModule['version'])) {
+      if (ModuleDocument::isLatestVersion($siteModule)) {
         continue;
       }
 
@@ -110,7 +152,7 @@ class DashboardManager extends BaseManager {
 
     // Don't add the site to the dashboard if there are no critical issues.
     if (!$hasCriticalIssue) {
-      return false;
+      return FALSE;
     }
 
     /** @var DashboardDocument $dashboard */
@@ -125,7 +167,7 @@ class DashboardManager extends BaseManager {
 
     $this->saveDocument($dashboard);
 
-    return true;
+    return TRUE;
   }
 
   /**
@@ -139,7 +181,7 @@ class DashboardManager extends BaseManager {
     $fromName = 'Warden';
 
     if (empty($to)) {
-      $this->logger->addError('There is no value for "email_dashboard_alert_address" so the dashboard alert email can not be sent');
+      $this->logger->addError('There is no value for "warden.email.dashboard.alert_address" so the dashboard alert email can not be sent');
       return;
     }
 
@@ -155,22 +197,6 @@ class DashboardManager extends BaseManager {
     }
     else {
       $this->logger->addError('Email failed to send to ' . $to . ' from ' . $from . ' with list of sites on the dashboard: ' . $this->mailer->getErrors());
-    }
-  }
-
-  /**
-   * Removes the site from the dashboard.
-   *
-   * @param SiteDocument $site
-   */
-  protected function removeSiteFromDashboard(SiteDocument $site) {
-    $qb = $this->createQueryBuilder();
-    $qb->field('siteId')->equals(new \MongoId($site->getId()));
-    $cursor = $qb->getQuery()->execute()->toArray();
-    $dashboardSite = array_pop($cursor);
-    if (!empty($dashboardSite)) {
-      $this->logger->addInfo('Remove the site [' . $site->getName() . '] from the dashboard');
-      $this->deleteDocument($dashboardSite->getId());
     }
   }
 }

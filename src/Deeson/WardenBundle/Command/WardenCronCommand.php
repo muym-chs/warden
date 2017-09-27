@@ -2,8 +2,7 @@
 
 namespace Deeson\WardenBundle\Command;
 
-use Deeson\WardenBundle\Document\SiteDocument;
-use Deeson\WardenBundle\Event\SiteRefreshEvent;
+use Deeson\WardenBundle\Event\CronEvent;
 use Deeson\WardenBundle\Event\WardenEvents;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -35,23 +34,12 @@ class WardenCronCommand extends ContainerAwareCommand {
     }
 
     if (empty($sites)) {
-      $output->writeln('There are no sites available to update.');
+      $output->writeln('No sites available.');
       return;
     }
 
-    $dispatcher->dispatch(WardenEvents::WARDEN_CRON);
-
-    foreach ($sites as $site) {
-      /** @var SiteDocument $site */
-      $output->writeln('Updating site: ' . $site->getId() . ' - ' . $site->getUrl());
-
-      $event = new SiteRefreshEvent($site);
-      $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
-
-      if ($event->hasMessage(SiteRefreshEvent::NOTICE)) {
-        $output->writeln('General Error - Unable to retrieve data from the site: ' . $event->getMessage(SiteRefreshEvent::NOTICE));
-      }
-    }
+    $event = new CronEvent($sites);
+    $dispatcher->dispatch(WardenEvents::WARDEN_CRON, $event);
   }
 
 }

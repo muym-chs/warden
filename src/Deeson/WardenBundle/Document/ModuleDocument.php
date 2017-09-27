@@ -156,13 +156,15 @@ class ModuleDocument extends BaseDocument {
    * Add new site to the list of sites for this module.
    *
    * @param $siteId
+   * @param $siteName
    * @param $url
    * @param $version
    */
-  public function addSite($siteId, $url, $version) {
+  public function addSite($siteId, $siteName, $url, $version) {
     $moduleSites = $this->getSites();
     $moduleSites[] = array(
       'id' => $siteId,
+      'name' => $siteName,
       'url' => $url,
       'version' => $version,
     );
@@ -301,7 +303,8 @@ class ModuleDocument extends BaseDocument {
    * @return string
    */
   public static function getMajorVersion($version) {
-    return substr($version, 0, 1);
+    $info = self::getVersionInfo($version);
+    return $info['major'];
   }
 
   /**
@@ -337,6 +340,65 @@ class ModuleDocument extends BaseDocument {
       'other' => (isset($matches[3])) ? $matches[3] : NULL,
       'extra' => (isset($matches[4])) ? $matches[4] : NULL,
     );
+  }
+
+  /**
+   * Decides whether the current version is the same as the latest version.
+   *
+   * @param array $moduleData
+   *   The array of module data.
+   *
+   * @return bool
+   *   Returns true if the version numbers match, otherwise false.
+   */
+  public static function isLatestVersion($moduleData) {
+    return $moduleData['version'] == $moduleData['latestVersion'];
+  }
+
+  /**
+   * Decides whether the current and latest main version numbers are the same.
+   *
+   * This has based upon the standard module array as stored against each site,
+   * which contains the following keys: name, version, latestVersion, isSecurity.
+   *
+   * Module version number are in the following formats:
+   *  7.x-1.3
+   *  7.x-2.0-(alpha|beta|rc-0...|?)
+   *  7.x-2.0+8-dev (dev release)
+   *
+   * For comparing the version numbers we are not worrying about the alpha/beta/dev
+   * release data, just the major/ minor version numbers.
+   *
+   * @param array $moduleData
+   *   The array of module data.
+   *
+   * @return bool
+   *   Returns true if the version numbers match, otherwise false.
+   */
+  public static function versionsEqual($moduleData) {
+    if (!isset($moduleData['latestVersion'])) {
+      return FALSE;
+    }
+
+    $versionInfo = self::getVersionInfo($moduleData['version']);
+    $versionNumber = sprintf('%d.x-%d.%d', $versionInfo['major'], $versionInfo['minor'], $versionInfo['other']);
+    $latestVersionInfo = self::getVersionInfo($moduleData['latestVersion']);
+    $latestVersionNumber = sprintf('%d.x-%d.%d', $latestVersionInfo['major'], $latestVersionInfo['minor'], $latestVersionInfo['other']);
+    if ($versionNumber === '0.x-0.0' || $latestVersionNumber === '0.x-0.0') {
+      return FALSE;
+    }
+    return $versionNumber == $latestVersionNumber;
+  }
+
+  /**
+   * @param string $version
+   *   The version number to check.
+   *
+   * @return bool
+   */
+  public static function isDevRelease($version) {
+    $moduleVersionInfo = self::getVersionInfo($version);
+    return isset($moduleVersionInfo['extra']) && strstr($moduleVersionInfo['extra'], 'dev') !== FALSE;
   }
 
 }

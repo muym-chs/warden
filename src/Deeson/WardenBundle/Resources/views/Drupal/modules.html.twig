@@ -13,8 +13,16 @@
             </thead>
             <tbody>
             {% for module in modules %}
-                <tr>
-                    <td><a href="{{ path('modules_show', {'projectName': module.name }) }}">{{ module.name }}</a></td>
+                <tr {% if site.getModuleIsDevRelease(module) %}class="alert-info"{% endif %}>
+                    <td>
+                        {% if (module.version) %}
+                        <a href="{{ path('modules_show', {'projectName': module.name }) }}">
+                            {{ module.name }}
+                        </a>
+                        {% else %}
+                            {{ module.name }}
+                        {% endif %}
+                    </td>
                     <td>{{ module.version }}</td>
                 </tr>
             {% endfor %}
