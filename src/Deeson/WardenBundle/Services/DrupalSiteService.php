@@ -108,8 +108,9 @@ class DrupalSiteService {
       /** @var SiteDocument $site */
       print 'Updating site: ' . $site->getId() . ' - ' . $site->getUrl() . "\n";
       $this->logger->addInfo('Updating site: ' . $site->getId() . ' - ' . $site->getUrl());
+
       try {
-        $event = new SiteEvent($site);
+        $event = new SiteRefreshEvent($site);
         $this->dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
       }
       catch (\Exception $e) {

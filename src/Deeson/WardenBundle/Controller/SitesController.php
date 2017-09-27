@@ -12,7 +12,9 @@ use Symfony\Bridge\Monolog\Logger;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
+use Deeson\WardenBundle\Managers\ModuleManager;
 use Deeson\WardenBundle\Managers\SiteManager;
+use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Document\SiteDocument;
 use Deeson\WardenBundle\Services\SSLEncryptionService;
 use Symfony\Component\HttpFoundation\Response;
@@ -174,10 +176,10 @@ class SitesController extends Controller {
     /** @var EventDispatcher $dispatcher */
     $dispatcher = $this->get('event_dispatcher');
 
-    try {$event = new SiteRefreshEvent($site);
+    $event = new SiteRefreshEvent($site);
+    $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);
 
-
-      $dispatcher->dispatch(WardenEvents::WARDEN_SITE_REFRESH, $event);if ($event->hasMessage(SiteRefreshEvent::WARNING)) {
+    if ($event->hasMessage(SiteRefreshEvent::WARNING)) {
       $this->get('session')->getFlashBag()->add('error', 'General Error - Unable to retrieve data from the site: ' . $event->getMessage(SiteRefreshEvent::WARNING));
     }
 
