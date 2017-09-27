@@ -130,8 +130,6 @@ class SitesController extends Controller {
 
       /** @var EventDispatcher $dispatcher */
       $dispatcher = $this->get('event_dispatcher');
-      $event = new SiteDeleteEvent($site);
-      $dispatcher->dispatch(WardenEvents::WARDEN_SITE_DELETE, $event);
 
       $event = new DashboardUpdateEvent($site, TRUE);
       $dispatcher->dispatch(WardenEvents::WARDEN_DASHBOARD_UPDATE, $event);

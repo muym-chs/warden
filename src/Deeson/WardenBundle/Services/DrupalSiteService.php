@@ -198,24 +198,6 @@ class DrupalSiteService {
   }
 
   /**
-   * Update the modules to remove the site.
-   *
-   * @param SiteDocument $site
-   */
-  public function onWardenSiteDelete(SiteDocument $site) {
-    foreach ($site->getModules() as $siteModule) {
-      /** @var ModuleDocument $module */
-      $module = $this->drupalModuleManager->findByProjectName($siteModule['name']);
-      if (empty($module)) {
-        $this->logger->addError('Error getting module [' . $siteModule['name'] . ']');
-        continue;
-      }
-      $module->removeSite($site->getId());
-      $this->drupalModuleManager->updateDocument();
-    }
-  }
-
-  /**
    * Get the current micro time.
    *
    * @return float
