@@ -14,10 +14,11 @@ class AppKernel extends Kernel
             new Symfony\Bundle\MonologBundle\MonologBundle(),
             new Symfony\Bundle\AsseticBundle\AsseticBundle(),
             new Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle(),
-            new Deeson\WardenBundle\DeesonWardenBundle(),
             new Sensio\Bundle\BuzzBundle\SensioBuzzBundle(),
             new Doctrine\Bundle\MongoDBBundle\DoctrineMongoDBBundle(),
             new Symfony\Bundle\SwiftmailerBundle\SwiftmailerBundle(),
+            new Deeson\WardenBundle\DeesonWardenBundle(),
+            new Deeson\WardenDrupalBundle\DeesonWardenDrupalBundle(),
             new Deeson\WardenThirdPartyLibraryBundle\DeesonWardenThirdPartyLibraryBundle(),
         );
 

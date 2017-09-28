@@ -1,6 +1,6 @@
 <?php
 
-namespace Deeson\WardenBundle\Services;
+namespace Deeson\WardenDrupalBundle\Services;
 
 use Deeson\WardenBundle\Document\SiteDocument;
 use Deeson\WardenBundle\Event\CronEvent;
@@ -12,6 +12,7 @@ use Deeson\WardenBundle\Event\SiteUpdateEvent;
 use Deeson\WardenBundle\Event\WardenEvents;
 use Deeson\WardenBundle\Exception\WardenRequestException;
 use Deeson\WardenBundle\Managers\ModuleManager;
+use Deeson\WardenBundle\Services\SiteConnectionService;
 use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 

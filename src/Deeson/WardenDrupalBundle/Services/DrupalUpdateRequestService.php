@@ -1,6 +1,6 @@
 <?php
 
-namespace Deeson\WardenBundle\Services;
+namespace Deeson\WardenDrupalBundle\Services;
 
 use Deeson\WardenBundle\Client\RequestHandlerException;
 use Deeson\WardenBundle\Client\RequestHandlerInterface;

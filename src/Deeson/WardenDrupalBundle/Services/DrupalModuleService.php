@@ -1,10 +1,9 @@
 <?php
 
-namespace Deeson\WardenBundle\Services;
+namespace Deeson\WardenDrupalBundle\Services;
 
 use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Document\SiteDocument;
-use Deeson\WardenBundle\Exception\DocumentNotFoundException;
 use Deeson\WardenBundle\Managers\ModuleManager;
 use Deeson\WardenBundle\Managers\SiteManager;
 use Monolog\Logger;

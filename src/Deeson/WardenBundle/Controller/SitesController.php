@@ -3,7 +3,6 @@
 namespace Deeson\WardenBundle\Controller;
 
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
-use Deeson\WardenBundle\Event\SiteDeleteEvent;
 use Deeson\WardenBundle\Event\SiteRefreshEvent;
 use Deeson\WardenBundle\Event\SiteShowEvent;
 use Deeson\WardenBundle\Event\SiteUpdateEvent;
@@ -53,6 +52,7 @@ class SitesController extends Controller {
     /** @var EventDispatcher $dispatcher */
     $dispatcher = $this->get('event_dispatcher');
 
+    /** @var SiteDocument $site */
     $site = $manager->getDocumentById($id);
 
     $event = new SiteShowEvent($site);
