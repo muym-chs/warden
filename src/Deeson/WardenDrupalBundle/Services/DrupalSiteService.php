@@ -6,6 +6,7 @@ use Deeson\WardenBundle\Document\SiteDocument;
 use Deeson\WardenBundle\Event\CronEvent;
 use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Event\DashboardUpdateEvent;
+use Deeson\WardenBundle\Event\SiteDeleteEvent;
 use Deeson\WardenBundle\Event\SiteRefreshEvent;
 use Deeson\WardenBundle\Event\SiteShowEvent;
 use Deeson\WardenBundle\Event\SiteUpdateEvent;
@@ -165,6 +166,10 @@ class DrupalSiteService {
   }
 
   /**
+   * Event: warden.site.show
+   *
+   * Fires when a site page is viewed.
+   *
    * @param SiteShowEvent $event
    */
   public function onWardenSiteShow(SiteShowEvent $event) {
@@ -196,6 +201,17 @@ class DrupalSiteService {
     $event->addParam('modules', $site->getModules());
 
     $this->logger->addInfo('This is the end of a Drupal show site event: ' . $site->getUrl());
+  }
+
+  /**
+   * Event: warden.site.delete
+   *
+   * Fires when a site is deleted.
+   *
+   * @param SiteDeleteEvent $event
+   */
+  public function onWardenSiteDelete(SiteDeleteEvent $event) {
+    // @todo handle the removal of a site
   }
 
   /**
