@@ -1,9 +1,10 @@
 <?php
 
-namespace Deeson\WardenBundle\Managers;
+namespace Deeson\WardenDrupalBundle\Managers;
 
 use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Exception\DocumentNotFoundException;
+use Deeson\WardenBundle\Managers\BaseManager;
 
 class ModuleManager extends BaseManager {
 

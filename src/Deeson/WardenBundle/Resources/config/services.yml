@@ -28,10 +28,6 @@ services:
         class: Deeson\WardenBundle\Services\SiteConnectionService
         arguments: ['@warden.http_client', '@warden.ssl_encryption', '@monolog.logger']
 
-    warden.drupal.module_manager:
-        class: Deeson\WardenBundle\Managers\ModuleManager
-        arguments: ['@doctrine_mongodb', '@monolog.logger']
-
     warden.site_manager:
         class: Deeson\WardenBundle\Managers\SiteManager
         arguments: ['@doctrine_mongodb', '@monolog.logger']

@@ -45,11 +45,13 @@ class SiteDocument extends BaseDocument {
 
   /**
    * @Mongodb\Collection
+   * @todo move this into the DrupalSiteService
    */
   protected $modules;
 
   /**
    * @Mongodb\Hash
+   * @todo move this into the ThirdpartyService
    */
   protected $libraries;
 
@@ -203,6 +205,7 @@ class SiteDocument extends BaseDocument {
 
   /**
    * Set the current modules for the site.
+   * @todo move this into the DrupalSiteService
    *
    * @param array $modules
    *   List of modules to add to the site.
@@ -259,7 +262,7 @@ class SiteDocument extends BaseDocument {
 
   /**
    * Set the current third party libraries for the site.
-   * @todo move this into the DrupalSiteService
+   * @todo move this into the Thirdpartylibraryservice
    *
    * @param array $libraryData
    *   List of third party library data to add to the site.
@@ -308,6 +311,7 @@ class SiteDocument extends BaseDocument {
 
   /**
    * Determines if the module version is a dev release or not.
+   * @todo move this into the DrupalSiteService
    *
    * @param array $module
    *

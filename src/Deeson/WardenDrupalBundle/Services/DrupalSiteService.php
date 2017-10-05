@@ -12,8 +12,8 @@ use Deeson\WardenBundle\Event\SiteShowEvent;
 use Deeson\WardenBundle\Event\SiteUpdateEvent;
 use Deeson\WardenBundle\Event\WardenEvents;
 use Deeson\WardenBundle\Exception\WardenRequestException;
-use Deeson\WardenBundle\Managers\ModuleManager;
 use Deeson\WardenBundle\Services\SiteConnectionService;
+use Deeson\WardenDrupalBundle\Managers\ModuleManager;
 use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 

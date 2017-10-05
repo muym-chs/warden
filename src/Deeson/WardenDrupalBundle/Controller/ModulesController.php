@@ -1,6 +1,6 @@
 <?php
 
-namespace Deeson\WardenBundle\Controller;
+namespace Deeson\WardenDrupalBundle\Controller;
 
 use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Document\SiteDocument;

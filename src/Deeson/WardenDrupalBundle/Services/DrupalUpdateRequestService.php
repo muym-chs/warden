@@ -6,8 +6,8 @@ use Deeson\WardenBundle\Client\RequestHandlerException;
 use Deeson\WardenBundle\Client\RequestHandlerInterface;
 use Deeson\WardenBundle\Document\ModuleDocument;
 use Deeson\WardenBundle\Document\SiteDocument;
-use Deeson\WardenBundle\Managers\ModuleManager;
 use Deeson\WardenBundle\Managers\SiteManager;
+use Deeson\WardenDrupalBundle\Managers\ModuleManager;
 use Monolog\Logger;
 
 class DrupalUpdateRequestService {
