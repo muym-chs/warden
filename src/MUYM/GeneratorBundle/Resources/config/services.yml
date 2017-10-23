@@ -1,0 +1,4 @@
+services:
+    muym.dashboard_generator:
+        class: MUYM\GeneratorBundle\Managers\GeneratorManager
+        arguments: ['@doctrine_mongodb', '@monolog.logger', '@service_container']

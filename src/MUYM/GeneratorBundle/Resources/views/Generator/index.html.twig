@@ -1,0 +1,14 @@
+{% extends 'DeesonWardenBundle::layout.html.twig' %}
+
+{% block title %}Warden Generator{% endblock %}
+
+{% block page_title 'Generator' %}
+
+{% block content %}
+
+    {% if type %}
+        <h1>{{ type }}</h1>
+        <p>There are currently no sites with any problems.</p>
+    {% endif %}
+
+{% endblock %}
